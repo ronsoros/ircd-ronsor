@@ -179,12 +179,21 @@ while(true)
 				foreach($channels[$parv[1]] as $nodx => $nid){
 					if($clients[$nid]['nick'] == $target){
 						sendtochan($channels[$parv[1]],":".nuh($clients[$nid])." PART ".$parv[1]." :KICKED BY ".nuh($csock)." (".$message.")");
-						unset($channels[$nodx]);
+						unset($channels[$chan][$nodx]);
 					}
 				}
 			} else {
 						sendtochan($channels[$chan],":".nuh($csock)." NOTICE ".$chan." :Attempted to kick user ".$target." but lacked +o OP");
 			}
+		break;
+		case 'part':
+			$target = $csock['nick'];
+		foreach($channels[$parv[1]] as $nodx => $nid){
+                      if($clients[$nid]['nick'] == $target){
+                                 sendtochan($channels[$parv[1]],":".nuh($clients[$nid])." PART ".$parv[1]." :Left");
+                                                unset($channels[$parv[1]][$nodx]);
+                                        }
+                                }
 		break;
 		case 'notice':
 		case 'privmsg':
