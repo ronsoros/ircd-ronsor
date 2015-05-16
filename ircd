@@ -232,6 +232,7 @@ echo $dat."\n";
 function serverput($arr,$dat){
 }
 function chanfindnick($arr,$nick){
+	global $clients;
 	foreach($arr as $nod => $nid){
 		if($clients[$nid]['nick'] == $nick){
 			$ret = $nod;
