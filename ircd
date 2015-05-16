@@ -138,7 +138,7 @@ while(true)
 			$chantopics[$parv[1]] = $tpc;
 			sendtochan($channels[$parv[1]],":".nuh($csock)." TOPIC ".$parv[1]." ".$parv[1]." :".$tpc);
 		} else {
-			sockput($csock,":".$inimain['name']." TOPIC ".$parv[2]." :".$chantopics[$parv[1]]);
+			sockput($csock,":".$inimain['name']." TOPIC ".$csock['nick']." ".$parv[2]." :".$chantopics[$parv[1]]);
 		}
 		}
 		break;
