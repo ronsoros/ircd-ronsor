@@ -253,7 +253,7 @@ function sendtochan($chanarr,$mesgstr){
 }
 function sockput($sck,$dat){
 if(!empty($sck['remote'])){
-serverput($clients,":".nuh($sck)." ".$dat);
+
 } else {
 socket_write($sck['sock'],$dat."\r\n");
 echo $dat."\n";
@@ -261,7 +261,7 @@ echo $dat."\n";
 }
 function serverput($arr,$dat){
 foreach($arr as $clnt){
-	if($clnt['server'] = 1){
+	if($clnt['server'] == 1){
 		sockput($clnt,$dat);
 	}
 }
