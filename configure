@@ -1,0 +1,12 @@
+#!/bin/bash
+ssl="yes"
+if [ "$(which php)" = "" ]; then
+echo "FATAL ERROR: not found: /usr/bin/php /usr/local/bin/php /usr/local/php/php /bin/php /opt/php"
+exit 1
+fi
+if [ "$(which ncat)" = "" ];
+echo "WARNING: ncat(in package nmap) is not found: SSL not supported"
+ssl="no"
+fi
+echo "Ok. Edit ircd.conf and start the ircd!"
+echo "SSL: $ssl"
