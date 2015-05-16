@@ -62,6 +62,7 @@ while(true)
 		socket_clear_error();
 	}
 	if(!empty($sctgot)){
+	$nparv = explode(' ',$sctgot);
 	$parv = explode(' ',str_replace(":","",strtolower($sctgot)));
 	//print_r($parv);
 	switch(strtolower($parv[0])){
@@ -114,23 +115,36 @@ while(true)
 		sockput($csock,"PONG ".$parv[1]);
 		break;
 		case 'join':
-		sockput($csock,":".nuh($clientid)." JOIN ".$parv[1]);
-		if(!isset($channels[$parv[1]])){
-			$channels[$parv[1]][] = $clientn;
-			$chanops[$parv[1]][] = $clientn;
-			sockput($csock,":".$inimain['name']." MODE ".$parv[1]." +ov ".$csock['nick']." ".$csock['nick']);
+		foreach(explode(",",$parv[1]) as $chanx){
+		sockput($csock,":".nuh($clientid)." JOIN ".$chanx);
+		if(!isset($channels[$chanx])){
+			$channels[$chanx][] = $clientn;
+			$chanops[$chanx][] = $clientn;
+			sockput($csock,":".$inimain['name']." MODE ".$chanx." +ov ".$csock['nick']." ".$csock['nick']);
 		} else {
 			foreach($channels[$parv[1]] as $n => $f){
-				sockput($clients[$f],":".nuh($csock)." JOIN ".$parv[1]);
+				sockput($clients[$f],":".nuh($csock)." JOIN ".$chanx);
 			}
+			sockput($csock,":".$inimain['name']." 332 ".$csock['nick']." ".$parv[1]." :".$chantopics[$parv[1]]);
                         $channels[$parv[1]][] = $clientn;
 		}
-		sockput($csock,names($csock,$parv[1]));
-
+		sockput($csock,names($csock,$chanx));
+		}
+		break;
+		case 'topic':
+		if(!empty($parv[2])){
+		if(in_array($clientn,$chanops[$parv[1]],true)){
+			$tpc = str_replace($nparv[0]." ".$nparv[1]." :","",$sctgot);
+			$chantopics[$parv[1]] = $tpc;
+			sendtochan($channels[$parv[1]],":".nuh($csock)." TOPIC ".$parv[1]." ".$parv[1]." :".$tpc);
+		} else {
+			sockput($csock,":".$inimain['name']." TOPIC ".$parv[2]." :".$chantopics[$parv[1]]);
+		}
+		}
 		break;
 		case 'list':
 		foreach($channels as $chn => $uns){
-			sockput($csock,":".$inimain['name']." 322 ".$csock['nick']." ".$chn." * :*");
+			sockput($csock,":".$inimain['name']." 322 ".$csock['nick']." ".$chn." :0 ".$chantopics[$chn]);
 		}
 		break;
 		case 'mode':
@@ -139,7 +153,7 @@ while(true)
 		} else {
 		switch($parv[2]){
 		case '+o':
-		if(in_array($clientn,$chanops[$parv[1]],true)){
+		if(in_array($clientn,$chanops[$parv[1]],true) || !empty($csock['priv'])){
 			sendtochan($channels[$parv[1]],":".nuh($csock)." MODE ".$parv[1]." +o ".$parv[3]);
 			$chanops[$parv[1]][] = chanfindnick($channels[$parv[1]],$parv[2]);
 		} else {
@@ -172,11 +186,12 @@ while(true)
 						sendtochan($channels[$chan],":".nuh($csock)." NOTICE ".$chan." :Attempted to kick user ".$target." but lacked +o OP");
 			}
 		break;
+		case 'notice':
 		case 'privmsg':
-		$sndmsg = str_replace($parv[0]." ".$parv[1]." :","",$sctgot);
+		$sndmsg = str_replace($nparv[0]." ".$nparv[1]." :","",$sctgot);
 		foreach($clients as $cnt){
 			if(fnmatch($cnt['nick'],$parv[1]) || fnmatch($cnt['host'],$parv[1])){
-				sockput($cnt,":".nuh($clientid)." PRIVMSG ".$cnt['nick']." :".$sndmsg);
+				sockput($cnt,":".nuh($clientid)." ".$nparv[0]." ".$cnt['nick']." :".$sndmsg);
 			}
 		}
 		print_r($channels[$parv[1]]);
@@ -189,7 +204,7 @@ while(true)
 			echo $xp." NOT(SEND) ".$clientn."\n";
 			} else {
 			echo $xp." SENT ".$clientn."\n";
-			sockput($n,":".nuh($clientid)." PRIVMSG ".$parv[1]." :".$sndmsg);
+			sockput($n,":".nuh($clientid)." ".$nparv[0]." ".$parv[1]." :".$sndmsg);
 			}
 		}
 
