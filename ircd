@@ -136,7 +136,7 @@ while(true)
 		if(in_array($clientn,$chanops[$parv[1]],true)){
 			$tpc = str_replace($nparv[0]." ".$nparv[1]." :","",$sctgot);
 			$chantopics[$parv[1]] = $tpc;
-			sendtochan($channels[$parv[1]],":".nuh($csock)." TOPIC ".$parv[1]." ".$parv[1]." :".$tpc);
+			sendtochan($channels[$parv[1]],":".nuh($csock)." TOPIC ".$parv[1]." :".$tpc);
 		} else {
 			sockput($csock,":".$inimain['name']." TOPIC ".$csock['nick']." ".$parv[2]." :".$chantopics[$parv[1]]);
 		}
