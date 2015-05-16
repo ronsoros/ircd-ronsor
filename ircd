@@ -163,7 +163,7 @@ while(true)
 		case '-o':
 		if(in_array($clientn,$chanops[$parv[1]])){
 			sendtochan($channels[$parv[1]],":".nuh($csock)." MODE ".$parv[1]." -o ".$parv[3]);
-			$chanops[$parv[1]][chanfindnick($chanops[$parv[1]],$parv[2])] = 0;
+			$chanops[$parv[1]][chanfindnick($chanops[$parv[1]],$parv[3])] = 0;
 		}
 		break;
 		default:
