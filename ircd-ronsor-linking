@@ -4,14 +4,15 @@ $ini = parse_ini_file('ircd.conf',true);
 $inimain = $ini['main'];
 print_r($ini);
 $CONST_MAX_USERS = 1024;
-$CONST_VERSION = "1-beta1";
-$CONST_ISUPPORT = "ircd-ronsor $CONST_VERSION NICKLEN=12 CHANTYPES=#&!+ NICKALLOW=AZ,az,09,-_[] PREFIX=(ov)@+ NETWORK=IRC";
+$CONST_VERSION = "1:linking-beta";
+$CONST_ISUPPORT = "ircd-ronsor $CONST_VERSION NICKLEN=". $inimain['nicklen']." CHANTYPES=#&!+ NICKALLOW=AZ,az,09,-_[] PREFIX=(ov)@+ NETWORK=IRC SCAP=LEGACY_SUSER,CLIENT";
 //<?php
 //error_reporting(0);
 $clients = array();
 global $clients;
 global $inimain;
 global $ini;
+// listen on sockets
 $socket = socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
 if(!socket_bind($socket,'0.0.0.0',$ini['main']['port'])){
 	if(!socket_bind($socket,'0.0.0.0',$ini['main']['altport'])){
@@ -38,7 +39,7 @@ while(true)
 	sockput($curclient,":".$inimain['name']." NOTICE * :I am resolving your hostname...");
 	sockput($curclient,":".$inimain['name']." 005 * ".$CONST_ISUPPORT." :are my settings specified in ircd.conf");
 	if(isset($ini['ban']['ip'][$sckhost])){
-	sockput($curclient,":".$inimain['name']." NOTICE * :I don't like you.");
+	sockput($curclient,":".$inimain['name']." NOTICE * :I'm supposed to bounce you.");
 	sockput($curclient,"ERROR :You're banned $sckhost ".$ini['ban']['ip'][$sckhost]);
 	socket_close($newc);
 	}
@@ -47,6 +48,7 @@ while(true)
     foreach($clients as $clientn => $clientid){
 	$csock = $clientid;
 	//echo $clientn."\n";
+	// get the data
 	$sctgotn = socket_recv($csock['sock'], $sctgotx, 4096, 0x40);
        $sctgotx = str_replace("\r","",$sctgotx);
 	foreach(explode("\n",$sctgotx) as $sctgot){
@@ -110,7 +112,7 @@ while(true)
                  $clients[$clientn]['priv'] = "o";
                 } else {
 		sockput($csock,":".$inimain['name']." NOTICE * :Wrong information");
-		kill_user($clients,$parv[1],"Wrong Oper Credentials");
+		//yeah no: kill_user($clients,$parv[1],"Wrong Oper Credentials");
 		}
 		case 'nick':
                 if(findnick($parv[1]) == true){
@@ -120,7 +122,7 @@ while(true)
                 if(empty($clientid['nick'])){
 		sockput($csock,":".$inimain['name']." 001 ".$parv[1]." :[001] Welcome to IRC!");
 		sockput($csock,":".$inimain['name']." 372 ".$parv[1]." :*** ".$inimain['motd']);
-		serverput($clients,":".$inimain['name']." SUSER ".$parv[1]." ".$clientid['host']);
+		serverput($clients,":".$inimain['name']." CLIENT ".$parv[1]." ".$clientid['host']);
 		$clients[$clientn]['nick'] = $parv[1];
 		$clients[$clientn]['ident'] = $parv[1];
                  } else {
@@ -129,6 +131,7 @@ while(true)
                 }
                 
 		break;
+		case 'client':
 		case 'suser':
 		$clients[] = Array('nick' => $parv[1], 'ident' => $parv[1], 'host' => $host, 'remote' => 1,$sock = $csock['sock']);
 		break;
@@ -237,6 +240,8 @@ while(true)
 			sockput($n,":".nuh($clientid)." ".$nparv[0]." ".$parv[1]." :".$sndmsg);
 			}
 		}
+		break;
+		
 		
 	}
 	}
@@ -252,8 +257,8 @@ function sendtochan($chanarr,$mesgstr){
 	}
 }
 function sockput($sck,$dat){
-if(!empty($sck['remote'])){
-
+if(!isset($sck['sock'])){
+suserput($sck,$dat);
 } else {
 socket_write($sck['sock'],$dat."\r\n");
 echo $dat."\n";
@@ -270,7 +275,7 @@ function chanfindnick($arr,$nick){
 	global $clients;
 	foreach($arr as $nod => $nid){
 		if($clients[$nid]['nick'] == $nick){
-			$ret = $nod;
+			$ret = $nid;
 		}
 	}
 	return $ret;
