@@ -107,6 +107,13 @@ while(true)
 		$clients[$clientn]['server'] = 1;
 		opersend(":".$parv[1]." NOTICE OPERS :*** Connecting server (USE /SQUIT SERVER to stop): ".$parv[1]);
                 sockput($csock,"SERVER ".$inimain['name']." ".$ini['main']['opers'][$csock['nick']]);
+		foreach($clients as $clin){
+		sockput($csock,"CLIENT ".$clin['nick']." ".$clin['host']);
+		}
+		foreach($channels as $chann => $chand){
+		sockput($csock,"JOIN ".$chann);
+		}
+		sockput($csock,"300 PROC_NEGO ENDOFBURST");
 		case 'oper':
                 if(strtolower($inimain['opers'][$parv[1]]) == $parv[2]){
                  $clients[$clientn]['priv'] = "o";
@@ -175,10 +182,12 @@ while(true)
 		if($parv[1] == $csock['nick']){
 		sockput($csock,":".$inimain['name']." 300 * E_NOIMPL :Error setting user modes: Not implemented");
 		} else {
+		if(in_array($clientn,$chanops[$parv[1]],true) || !empty($csock['priv'])){
+		$dosendall = 1;
 		switch($parv[2]){
 		case '+o':
 		if(in_array($clientn,$chanops[$parv[1]],true) || !empty($csock['priv'])){
-			sendtochan($channels[$parv[1]],":".nuh($csock)." MODE ".$parv[1]." +o ".$parv[3]);
+			//sendtochan($channels[$parv[1]],":".nuh($csock)." MODE ".$parv[1]." +o ".$parv[3]);
 			$chanops[$parv[1]][] = chanfindnick($channels[$parv[1]],$parv[3]);
 		} else {
 			sendtochan($channels[$parv[1]],":".$inimain['main']." 300 ".$parv[1]." E_NOCHOPS :*** Cannot set mode +o without ops ".nuh($csock));
@@ -186,12 +195,30 @@ while(true)
 		break;
 		case '-o':
 		if(in_array($clientn,$chanops[$parv[1]])){
-			sendtochan($channels[$parv[1]],":".nuh($csock)." MODE ".$parv[1]." -o ".$parv[3]);
-			$chanops[$parv[1]][chanfindnick($chanops[$parv[1]],$parv[3])] = 0;
+			//sendtochan($channels[$parv[1]],":".nuh($csock)." MODE ".$parv[1]." -o ".$parv[3]);
+			$chanops[$parv[1]][chanfindnick_nod($chanops[$parv[1]],$parv[3])] = -2;
 		}
 		break;
+		case '+M':
+		$chanflags[$parv[1]]['mustbein'] = 1;
+		break;
+		case '-M':
+		$chanflags[$parv[1]]['mustbein'] = 0;
+		break;
+		case '+v':
+		$chanvoice[$parv[1]][] = chanfindnick($channels[$parv[1]],$parv[3]);
+		break;
+		case '-v':
+		$chanvoice[$parv[1]][chanfindnick_nod($chanvoice[$parv[1]],$parv[3])] = -2;
+		break;
 		default:
-			sockput($csock,":".$inimain['main']." 300 ".$csock['nick']." E_INVALIDCHMODE :Invalid channel mode");
+			sockput($csock,":".$inimain['name']." 300 ".$csock['nick']." E_INVALIDCHMODE :Invalid channel mode");
+			$dosendall = 0;
+		}
+		if ($dosendall == 1){
+			$dosendall = 0;
+			sendtochan($channels[$parv[1]],":".nuh($csock)." ".$sctgot);
+		}
 		}
 		}
 		break;
@@ -202,7 +229,7 @@ while(true)
 			if(in_array($clientn,$chanops[$parv[1]],true) || $csock['priv'] = 'o'){
 				foreach($channels[$parv[1]] as $nodx => $nid){
 					if($clients[$nid]['nick'] == $target){
-						sendtochan($channels[$parv[1]],":".nuh($clients[$nid])." PART ".$parv[1]." :KICKED BY ".nuh($csock)." (".$message.")");
+						sendtochan($channels[$parv[1]],":".nuh($csock)." KICK ".$parv[1]." ".$clients[$nid]['nick']." :{$message}");
 						unset($channels[$chan][$nodx]);
 					}
 				}
@@ -228,6 +255,7 @@ while(true)
 			}
 		}
 		print_r($channels[$parv[1]]);
+		if(!chanfindnick($channels[$parv[1]],$csock['nick']) === false && $chanflags[$parv[1]]['mustbein'] == 0){
 		foreach($channels[$parv[1]] as $xp){
 			$n = $clients[$xp];
 			print_r($n);
@@ -239,6 +267,7 @@ while(true)
 			echo $xp." SENT ".$clientn."\n";
 			sockput($n,":".nuh($clientid)." ".$nparv[0]." ".$parv[1]." :".$sndmsg);
 			}
+		}
 		}
 		break;
 		
@@ -273,6 +302,7 @@ foreach($arr as $clnt){
 }
 function chanfindnick($arr,$nick){
 	global $clients;
+	$ret = false;
 	foreach($arr as $nod => $nid){
 		if($clients[$nid]['nick'] == $nick){
 			$ret = $nid;
@@ -280,10 +310,21 @@ function chanfindnick($arr,$nick){
 	}
 	return $ret;
 }
+function chanfindnick_nod($arr,$nick){
+        global $clients;
+        $ret = false;
+        foreach($arr as $nod => $nid){
+                if($clients[$nid]['nick'] == $nick){
+                        $ret = $nod;
+                }
+        }
+        return $ret;
+}
+
 function opersend($msg){
 global $clients;
 foreach($clients as $cln){
-	if($cln['priv'] = "o"){
+	if($cln['priv'] == "o"){
 		sockput($cln,$msg);
 	}
 }
@@ -298,16 +339,10 @@ foreach($clients as $ncid => $cid){
                 sockput($cid,":".$inimain['main']." NOTICE * :*** You are being disconnected.");
                 sockput($cid,"ERROR :Force Quit: ".str_replace('@TARGET',$cid['nick']."!@".$cid['host'],$reason));
               foreach($channels as $cna => $chan){
-                foreach($chan as $nid => $nus){
-                if($nus == $cid){
-                foreach($channels[$cna] as $cu){
-                sockput($clients[cu],":".nuh($cid)." QUIT :Disconnected");
-                }
-                $channels[$cname][$nid] = "";
-                unset($channels[$cname][$nid]);
-                }
-                }
-                }
+                if( !chanfindnick($chan,$cid['nick']) === false ){
+			sendtochan($chan,":".nuh($cid)." QUIT :".$reason);
+		}
+		}
 		
 		sleep(2);
                 socket_close($cid['sock']);
