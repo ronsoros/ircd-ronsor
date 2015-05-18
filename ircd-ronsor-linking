@@ -294,8 +294,9 @@ echo $dat."\n";
 }
 }
 function serverput($arr,$dat){
+global $csock;
 foreach($arr as $clnt){
-	if($clnt['server'] == 1){
+	if($clnt['server'] == 1 && $csock['nick'] != $clnt['nick']){
 		sockput($clnt,$dat);
 	}
 }
